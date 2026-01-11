@@ -1,0 +1,57 @@
+name: Flutter Build APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            android/.gradle
+            .dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.3'
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPA_URL=${{ secrets.SUPA_URL }} \
+            --dart-define=ANON_KEY=${{ secrets.ANON_KEY }} \
+            --dart-define=BASE_URL=${{ secrets.BASE_URL }} \
+            --dart-define=KEY_1=${{ secrets.KEY_1 }} \
+            --dart-define=KEY_2=${{ secrets.KEY_2 }} \
+            --dart-define=TOKEN=${{ secrets.TOKEN }} \
+            --dart-define=ENVIRONMENT=production
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
