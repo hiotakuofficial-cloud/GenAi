@@ -16,9 +16,10 @@ class ApiService {
   };
 
   static Future<String> sendMessage(String message) async {
-    Fluttertoast.showToast(msg: 'BASE_URL: $baseUrl');
-    Fluttertoast.showToast(msg: 'KEY_1: $key1');
-    Fluttertoast.showToast(msg: 'TOKEN: ${token.substring(0, 10)}...');
+    if (baseUrl.isEmpty || key1.isEmpty || key2.isEmpty || token.isEmpty) {
+      Fluttertoast.showToast(msg: 'Environment variables not set!');
+      throw Exception('Missing environment variables');
+    }
     
     try {
       final response = await http.post(
@@ -27,25 +28,24 @@ class ApiService {
         body: jsonEncode({'message': message}),
       );
 
-      Fluttertoast.showToast(msg: 'Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           return data['response'] ?? 'No response';
         }
         Fluttertoast.showToast(msg: 'API Error: ${data['error'] ?? 'Unknown'}');
+      } else {
+        Fluttertoast.showToast(msg: 'HTTP Error: ${response.statusCode}');
       }
       throw Exception('Failed to send message');
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Error: $e');
+      Fluttertoast.showToast(msg: 'Network Error: $e');
       throw Exception('Network error: $e');
     }
   }
 
   static Future<String> generateImage(String prompt) async {
     try {
-      Fluttertoast.showToast(msg: 'Generating image...');
       final response = await http.post(
         Uri.parse('$baseUrl/ai/ai.php?action=image'),
         headers: _headers,
@@ -55,21 +55,18 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          Fluttertoast.showToast(msg: 'Image generated!');
           return data['image_url'] ?? '';
         }
-        Fluttertoast.showToast(msg: 'Image error: ${data['error'] ?? 'Unknown'}');
+        throw Exception(data['error'] ?? 'Failed to generate image');
       }
-      throw Exception('Failed to generate image');
+      throw Exception('HTTP ${response.statusCode}: Failed to generate image');
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Image error: $e');
       throw Exception('Network error: $e');
     }
   }
 
   static Future<String> generateVideo(String prompt, {String type = 'basic'}) async {
     try {
-      Fluttertoast.showToast(msg: 'Generating video...');
       final response = await http.post(
         Uri.parse('$baseUrl/ai/ai.php?action=video'),
         headers: _headers,
@@ -82,14 +79,12 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          Fluttertoast.showToast(msg: 'Video generated!');
           return data['video_url'] ?? '';
         }
-        Fluttertoast.showToast(msg: 'Video error: ${data['error'] ?? 'Unknown'}');
+        throw Exception(data['error'] ?? 'Failed to generate video');
       }
-      throw Exception('Failed to generate video');
+      throw Exception('HTTP ${response.statusCode}: Failed to generate video');
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Video error: $e');
       throw Exception('Network error: $e');
     }
   }
