@@ -34,57 +34,13 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: Stack(
-              children: [
-                ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    return _buildMessageBubble(_messages[index]);
-                  },
-                ),
-                // Gradient fade effect
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 50,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Color(0xFF000000),
-                        ],
-                        stops: [0.0, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // Top fade (lighter)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 30,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF000000),
-                          Colors.transparent,
-                        ],
-                        stops: [0.0, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                return _buildMessageBubble(_messages[index]);
+              },
             ),
           ),
           _buildInputArea(),
@@ -213,7 +169,15 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        color: Color(0xFF000000),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Color(0xFF000000),
+          ],
+          stops: [0.0, 0.7],
+        ),
         border: Border(
           top: BorderSide(color: Color(0xFF333333), width: 0.5),
         ),
@@ -226,12 +190,12 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 40,
               height: 40,
               decoration: const BoxDecoration(
-                color: CupertinoColors.systemBlue,
+                color: Colors.white,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.add,
-                color: Colors.white,
+                color: Colors.black,
                 size: 24,
               ),
             ),
@@ -242,6 +206,10 @@ class _ChatScreenState extends State<ChatScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF111111),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 0.5,
+                ),
               ),
               child: TextField(
                 controller: _messageController,
@@ -263,15 +231,15 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 40,
               height: 40,
               decoration: const BoxDecoration(
-                color: CupertinoColors.systemBlue,
+                color: Colors.white,
                 shape: BoxShape.circle,
               ),
               child: _isLoading
-                  ? const CupertinoActivityIndicator(color: Colors.white)
+                  ? const CupertinoActivityIndicator(color: Colors.black)
                   : const Icon(
-                      Icons.send,
-                      color: Colors.white,
-                      size: 20,
+                      Icons.keyboard_arrow_up,
+                      color: Colors.black,
+                      size: 24,
                     ),
             ),
           ),
