@@ -42,11 +42,12 @@ class ApiService {
 
   static Future<String> generateImage(String prompt) async {
     try {
-      final response = await http.post(
+      final client = http.Client();
+      final response = await client.post(
         Uri.parse('$baseUrl/ai/ai.php?action=image'),
         headers: _headers,
         body: jsonEncode({'prompt': prompt}),
-      );
+      ).timeout(const Duration(minutes: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -63,14 +64,15 @@ class ApiService {
 
   static Future<String> generateVideo(String prompt, {String type = 'basic'}) async {
     try {
-      final response = await http.post(
+      final client = http.Client();
+      final response = await client.post(
         Uri.parse('$baseUrl/ai/ai.php?action=video'),
         headers: _headers,
         body: jsonEncode({
           'prompt': prompt,
           'type': type,
         }),
-      );
+      ).timeout(const Duration(minutes: 50));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
