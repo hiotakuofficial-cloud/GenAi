@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'screens/chat.dart';
+import 'screens/splash.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,10 +21,16 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Hisu',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF000000),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          secondary: Colors.grey,
+          surface: Color(0xFF111111),
+        ),
         useMaterial3: true,
       ),
-      home: const ChatScreen(),
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

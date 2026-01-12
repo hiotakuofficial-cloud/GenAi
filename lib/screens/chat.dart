@@ -18,15 +18,15 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
-        backgroundColor: CupertinoColors.systemBackground,
+        backgroundColor: const Color(0xFF000000),
         elevation: 0,
         title: const Text(
           'Hisu AI',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: CupertinoColors.label,
+            color: Colors.white,
           ),
         ),
         centerTitle: true,
@@ -34,13 +34,57 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return _buildMessageBubble(_messages[index]);
-              },
+            child: Stack(
+              children: [
+                ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    return _buildMessageBubble(_messages[index]);
+                  },
+                ),
+                // Gradient fade effect
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 50,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Color(0xFF000000),
+                        ],
+                        stops: [0.0, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // Top fade (lighter)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 30,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF000000),
+                          Colors.transparent,
+                        ],
+                        stops: [0.0, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           _buildInputArea(),
@@ -69,12 +113,12 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isUser 
-                    ? CupertinoColors.systemBlue 
-                    : CupertinoColors.systemBackground,
+                    ? Colors.white
+                    : const Color(0xFF111111),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.white.withOpacity(0.1),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
@@ -84,7 +128,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ? Text(
                       message.content,
                       style: TextStyle(
-                        color: isUser ? Colors.white : CupertinoColors.label,
+                        color: isUser ? Colors.black : Colors.white,
                         fontSize: 16,
                       ),
                     )
@@ -169,9 +213,9 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        color: CupertinoColors.systemBackground,
+        color: Color(0xFF000000),
         border: Border(
-          top: BorderSide(color: CupertinoColors.separator, width: 0.5),
+          top: BorderSide(color: Color(0xFF333333), width: 0.5),
         ),
       ),
       child: Row(
@@ -196,13 +240,15 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: CupertinoColors.systemGrey6,
+                color: const Color(0xFF111111),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: TextField(
                 controller: _messageController,
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   hintText: 'Message Hisu...',
+                  hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
