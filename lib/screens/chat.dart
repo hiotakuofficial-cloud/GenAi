@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -68,52 +67,35 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Widget _buildMessageBubble(ChatMessage message) {
     final isUser = message.isUser;
-    return AnimatedOpacity(
-      opacity: 1.0,
-      duration: const Duration(milliseconds: 500),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-          children: [
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isUser 
-                      ? Colors.white.withOpacity(0.5)
-                      : Colors.white.withOpacity(0.0),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.1),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: message.type == MessageType.text
-                    ? GestureDetector(
-                        onLongPress: () {
-                          if (!message.isUser) {
-                            Clipboard.setData(ClipboardData(text: message.content));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Text copied to clipboard'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          }
-                        },
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 300),
-                          style: TextStyle(
-                            color: isUser ? Colors.black : Colors.white,
-                            fontSize: 16,
-                          ),
-                          child: Text(message.content),
-                        ),
-                      )
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser 
+                    ? Colors.white
+                    : const Color(0xFF111111),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.1),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: message.type == MessageType.text
+                  ? Text(
+                      message.content,
+                      style: TextStyle(
+                        color: isUser ? Colors.black : Colors.white,
+                        fontSize: 16,
+                      ),
+                    )
                   : message.type == MessageType.image
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,8 +157,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               ),
                             ),
                           ],
-                        )
-                      : Container(), // fallback for other message types
+                        ),
             ),
           ),
         ],
@@ -402,16 +383,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         });
       } else {
         response = await ApiService.sendMessage(message);
-        // Add message with empty content first
         setState(() {
           _messages.add(ChatMessage(
-            content: '',
+            content: response,
             isUser: false,
             type: MessageType.text,
           ));
         });
-        // Animate text streaming
-        _animateTextStreaming(response, _messages.length - 1);
       }
     } catch (e) {
       setState(() {
@@ -458,27 +436,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void _initSpeech() async {
     _speechEnabled = await _speechToText.initialize();
     setState(() {});
-  }
-
-  void _animateTextStreaming(String fullText, int messageIndex) async {
-    final words = fullText.split(' ');
-    String currentText = '';
-    
-    for (int i = 0; i < words.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 50));
-      currentText += (i == 0 ? '' : ' ') + words[i];
-      
-      setState(() {
-        if (messageIndex < _messages.length) {
-          _messages[messageIndex] = ChatMessage(
-            content: currentText,
-            isUser: false,
-            type: MessageType.text,
-          );
-        }
-      });
-      _scrollToBottom();
-    }
   }
 
   void _scrollToBottom() {
