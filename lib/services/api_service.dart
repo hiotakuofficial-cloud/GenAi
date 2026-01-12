@@ -4,8 +4,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 
 class ApiService {
   static const String baseUrl = String.fromEnvironment('BASE_URL');
-  static const String key1 = String.fromEnvironment('KEY1');
-  static const String key2 = String.fromEnvironment('KEY2');
+  static const String key1 = String.fromEnvironment('KEY_1');
+  static const String key2 = String.fromEnvironment('KEY_2');
   static const String token = String.fromEnvironment('TOKEN');
 
   static Map<String, String> get _headers => {
@@ -17,7 +17,7 @@ class ApiService {
 
   static Future<String> sendMessage(String message) async {
     Fluttertoast.showToast(msg: 'BASE_URL: $baseUrl');
-    Fluttertoast.showToast(msg: 'KEY1: $key1');
+    Fluttertoast.showToast(msg: 'KEY_1: $key1');
     Fluttertoast.showToast(msg: 'TOKEN: ${token.substring(0, 10)}...');
     
     try {
