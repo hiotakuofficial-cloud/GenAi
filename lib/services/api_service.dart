@@ -25,7 +25,13 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          return data['response'] ?? 'No response';
+          String cleanResponse = data['response'] ?? 'No response';
+          // Remove markdown formatting
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1');
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'\*([^*]+)\*'), r'$1');
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'`([^`]+)`'), r'$1');
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'#{1,6}\s*'), '');
+          return cleanResponse;
         }
       }
       throw Exception('Failed to send message');
