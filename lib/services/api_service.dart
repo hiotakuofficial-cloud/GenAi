@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:fluttertoast/fluttertoast.dart';
 
 class ApiService {
   static const String baseUrl = String.fromEnvironment('BASE_URL');
@@ -16,11 +15,6 @@ class ApiService {
   };
 
   static Future<String> sendMessage(String message) async {
-    if (baseUrl.isEmpty || key1.isEmpty || key2.isEmpty || token.isEmpty) {
-      Fluttertoast.showToast(msg: 'Environment variables not set!');
-      throw Exception('Missing environment variables');
-    }
-    
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/ai/ai.php?action=chat'),
@@ -33,13 +27,9 @@ class ApiService {
         if (data['success'] == true) {
           return data['response'] ?? 'No response';
         }
-        Fluttertoast.showToast(msg: 'API Error: ${data['error'] ?? 'Unknown'}');
-      } else {
-        Fluttertoast.showToast(msg: 'HTTP Error: ${response.statusCode}');
       }
       throw Exception('Failed to send message');
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Network Error: $e');
       throw Exception('Network error: $e');
     }
   }
