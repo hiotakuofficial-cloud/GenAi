@@ -14,6 +14,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+  MessageType _currentMode = MessageType.text;
 
   @override
   Widget build(BuildContext context) {
@@ -56,14 +57,6 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Row(
         mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            const CircleAvatar(
-              radius: 16,
-              backgroundColor: CupertinoColors.systemBlue,
-              child: Icon(Icons.smart_toy, size: 18, color: Colors.white),
-            ),
-            const SizedBox(width: 8),
-          ],
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -152,14 +145,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            const CircleAvatar(
-              radius: 16,
-              backgroundColor: CupertinoColors.systemGrey,
-              child: Icon(Icons.person, size: 18, color: Colors.white),
-            ),
-          ],
         ],
       ),
     );
@@ -201,7 +186,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF111111),
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.3),
@@ -211,13 +196,13 @@ class _ChatScreenState extends State<ChatScreen> {
               child: TextField(
                 controller: _messageController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Message Hisu...',
-                  hintStyle: TextStyle(color: Colors.grey),
+                decoration: InputDecoration(
+                  hintText: _getHintText(),
+                  hintStyle: const TextStyle(color: Colors.grey),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
-                onSubmitted: _sendMessage,
+                onSubmitted: (value) => _sendMessage(value),
               ),
             ),
           ),
@@ -254,7 +239,7 @@ class _ChatScreenState extends State<ChatScreen> {
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.pop(context);
-              _showPromptDialog(MessageType.image);
+              _setGenerationMode(MessageType.image);
             },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -268,7 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.pop(context);
-              _showPromptDialog(MessageType.video);
+              _setGenerationMode(MessageType.video);
             },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -288,64 +273,74 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _showPromptDialog(MessageType type) {
-    final TextEditingController promptController = TextEditingController();
-    
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text('Generate ${type == MessageType.image ? 'Image' : 'Video'}'),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 16),
-          child: CupertinoTextField(
-            controller: promptController,
-            placeholder: 'Enter your prompt...',
-            maxLines: 3,
-          ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          CupertinoDialogAction(
-            onPressed: () {
-              Navigator.pop(context);
-              if (promptController.text.isNotEmpty) {
-                _generateContent(type, promptController.text);
-              }
-            },
-            child: const Text('Generate'),
-          ),
-        ],
-      ),
-    );
+  void _setGenerationMode(MessageType mode) {
+    setState(() {
+      _currentMode = mode;
+    });
+  }
+
+  String _getHintText() {
+    switch (_currentMode) {
+      case MessageType.image:
+        return 'Describe image to generate...';
+      case MessageType.video:
+        return 'Describe video to generate...';
+      default:
+        return 'Message Hisu...';
+    }
   }
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty || _isLoading) return;
 
+    final message = text.trim();
+    final mode = _currentMode;
+    _messageController.clear();
+
     setState(() {
       _messages.add(ChatMessage(
-        content: text,
+        content: message,
         isUser: true,
         type: MessageType.text,
       ));
       _isLoading = true;
+      _currentMode = MessageType.text; // Reset to text mode
     });
 
-    _messageController.clear();
     _scrollToBottom();
 
     try {
-      final response = await ApiService.sendMessage(text);
-      setState(() {
-        _messages.add(ChatMessage(
-          content: response,
-          isUser: false,
-          type: MessageType.text,
-        ));
-      });
+      String response;
+      if (mode == MessageType.image) {
+        response = await ApiService.generateImage(message);
+        setState(() {
+          _messages.add(ChatMessage(
+            content: response,
+            isUser: false,
+            type: MessageType.image,
+            prompt: message,
+          ));
+        });
+      } else if (mode == MessageType.video) {
+        response = await ApiService.generateVideo(message);
+        setState(() {
+          _messages.add(ChatMessage(
+            content: response,
+            isUser: false,
+            type: MessageType.video,
+            prompt: message,
+          ));
+        });
+      } else {
+        response = await ApiService.sendMessage(message);
+        setState(() {
+          _messages.add(ChatMessage(
+            content: response,
+            isUser: false,
+            type: MessageType.text,
+          ));
+        });
+      }
     } catch (e) {
       setState(() {
         _messages.add(ChatMessage(
@@ -362,49 +357,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _generateContent(MessageType type, String prompt) async {
-    setState(() {
-      _messages.add(ChatMessage(
-        content: prompt,
-        isUser: true,
-        type: MessageType.text,
-      ));
-      _isLoading = true;
-    });
 
-    _scrollToBottom();
-
-    try {
-      String content;
-      if (type == MessageType.image) {
-        content = await ApiService.generateImage(prompt);
-      } else {
-        content = await ApiService.generateVideo(prompt);
-      }
-
-      setState(() {
-        _messages.add(ChatMessage(
-          content: content,
-          isUser: false,
-          type: type,
-          prompt: prompt,
-        ));
-      });
-    } catch (e) {
-      setState(() {
-        _messages.add(ChatMessage(
-          content: 'Failed to generate ${type == MessageType.image ? 'image' : 'video'}. Please try again.',
-          isUser: false,
-          type: MessageType.text,
-        ));
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _scrollToBottom();
-    }
-  }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
