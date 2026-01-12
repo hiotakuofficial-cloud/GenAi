@@ -178,9 +178,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
           stops: [0.0, 0.7],
         ),
-        border: Border(
-          top: BorderSide(color: Color(0xFF333333), width: 0.5),
-        ),
       ),
       child: Row(
         children: [
