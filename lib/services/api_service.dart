@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseUrl = String.fromEnvironment('BASE_URL');
@@ -14,12 +15,38 @@ class ApiService {
     'token': token,
   };
 
+  static Future<void> _saveChatHistory(List<Map<String, String>> messages) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = jsonEncode(messages);
+    await prefs.setString('chat_history', jsonString);
+  }
+
+  static Future<List<Map<String, String>>> _getChatHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('chat_history');
+    if (jsonString != null) {
+      final List<dynamic> decoded = jsonDecode(jsonString);
+      return decoded.cast<Map<String, dynamic>>().map((e) => Map<String, String>.from(e)).toList();
+    }
+    return [];
+  }
+
   static Future<String> sendMessage(String message) async {
     try {
+      // Get last 20 messages for context
+      final history = await _getChatHistory();
+      final last20 = history.length > 20 ? history.sublist(history.length - 20) : history;
+      
+      // Add current message to history
+      last20.add({'role': 'user', 'content': message});
+
       final response = await http.post(
         Uri.parse('$baseUrl/ai/ai.php?action=chat'),
         headers: _headers,
-        body: jsonEncode({'message': message}),
+        body: jsonEncode({
+          'message': message,
+          'history': last20,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -31,6 +58,11 @@ class ApiService {
           cleanResponse = cleanResponse.replaceAll(RegExp(r'\*([^*]+)\*'), r'$1');
           cleanResponse = cleanResponse.replaceAll(RegExp(r'`([^`]+)`'), r'$1');
           cleanResponse = cleanResponse.replaceAll(RegExp(r'#{1,6}\s*'), '');
+          
+          // Save bot response to history
+          last20.add({'role': 'assistant', 'content': cleanResponse});
+          await _saveChatHistory(last20);
+          
           return cleanResponse;
         }
       }
@@ -38,6 +70,10 @@ class ApiService {
     } catch (e) {
       throw Exception('Network error: $e');
     }
+  }
+
+  static Future<List<Map<String, String>>> loadChatHistory() async {
+    return await _getChatHistory();
   }
 
   static Future<String> generateImage(String prompt) async {

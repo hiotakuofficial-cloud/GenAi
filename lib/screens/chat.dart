@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../components/download.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -97,66 +99,121 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       ),
                     )
                   : message.type == MessageType.image
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                message.content,
-                                width: 200,
-                                height: 200,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: CupertinoColors.systemGrey6,
-                                    child: const Center(
-                                      child: CupertinoActivityIndicator(),
+                      ? GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) => DownloadScreen(
+                                  url: message.content,
+                                  type: 'image',
+                                  prompt: message.prompt,
+                                ),
+                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                  return Hero(
+                                    tag: 'image_${message.content}',
+                                    child: FadeTransition(
+                                      opacity: animation,
+                                      child: child,
                                     ),
                                   );
                                 },
                               ),
-                            ),
-                            if (message.prompt.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                message.prompt,
-                                style: TextStyle(
-                                  color: isUser ? Colors.white70 : CupertinoColors.secondaryLabel,
-                                  fontSize: 14,
+                            );
+                          },
+                          child: Hero(
+                            tag: 'image_${message.content}',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    message.content,
+                                    width: 200,
+                                    height: 200,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        width: 200,
+                                        height: 200,
+                                        color: CupertinoColors.systemGrey6,
+                                        child: const Center(
+                                          child: CupertinoActivityIndicator(),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ],
+                                if (message.prompt.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    message.prompt,
+                                    style: TextStyle(
+                                      color: isUser ? Colors.white70 : CupertinoColors.secondaryLabel,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                         )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 200,
-                              height: 150,
-                              decoration: BoxDecoration(
-                                color: CupertinoColors.systemGrey6,
-                                borderRadius: BorderRadius.circular(12),
+                      : GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) => DownloadScreen(
+                                  url: message.content,
+                                  type: 'video',
+                                  prompt: message.prompt,
+                                ),
+                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                  return Hero(
+                                    tag: 'video_${message.content}',
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0.0, 1.0),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  );
+                                },
                               ),
-                              child: const Icon(
-                                Icons.play_circle_fill,
-                                size: 50,
-                                color: CupertinoColors.systemBlue,
-                              ),
+                            );
+                          },
+                          child: Hero(
+                            tag: 'video_${message.content}',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 200,
+                                  height: 150,
+                                  decoration: BoxDecoration(
+                                    color: CupertinoColors.systemGrey6,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_circle_fill,
+                                    size: 50,
+                                    color: CupertinoColors.systemBlue,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Video: ${message.prompt}',
+                                  style: TextStyle(
+                                    color: isUser ? Colors.white70 : CupertinoColors.secondaryLabel,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Video: ${message.prompt}',
-                              style: TextStyle(
-                                color: isUser ? Colors.white70 : CupertinoColors.secondaryLabel,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
             ),
           ),
@@ -409,6 +466,25 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
 
 
+  void _loadChatHistory() async {
+    try {
+      final history = await ApiService.loadChatHistory();
+      setState(() {
+        _messages.clear();
+        for (var msg in history) {
+          _messages.add(ChatMessage(
+            content: msg['content'] ?? '',
+            isUser: msg['role'] == 'user',
+            type: MessageType.text,
+          ));
+        }
+      });
+      _scrollToBottom();
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -431,6 +507,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
     
     _initSpeech();
+    _loadChatHistory();
   }
 
   void _initSpeech() async {
