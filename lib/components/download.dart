@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DownloadScreen extends StatelessWidget {
   final String url;
@@ -166,7 +167,7 @@ class DownloadScreen extends StatelessWidget {
 
   void _shareFile() async {
     try {
-      await launchUrl(Uri.parse('https://api.whatsapp.com/send?text=$url'));
+      await Share.share(url, subject: 'Check out this ${type}!');
     } catch (e) {
       // Handle error
     }
