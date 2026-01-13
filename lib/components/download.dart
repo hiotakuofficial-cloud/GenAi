@@ -167,7 +167,14 @@ class DownloadScreen extends StatelessWidget {
 
   void _shareFile() async {
     try {
-      await Share.share(url, subject: 'Check out this ${type}!');
+      final List<String> messages = [
+        "🎨 Just created this amazing ${type} with Hisu AI! ✨ This AI is absolutely incredible - it brings your wildest ideas to life in seconds! 🚀 Want to create something magical too? Try Hisu AI now! 💫 #HisuAI #AIArt #Creative",
+        "🔥 OMG! Look what Hisu AI just made for me! 😍 This ${type} is pure perfection! Hisu is like having a creative genius in your pocket - super fast, super smart, and totally addictive! 🎯 Download Hisu AI and unleash your creativity! ⚡ #HisuAI #Innovation",
+        "✨ Mind = BLOWN! 🤯 Hisu AI just turned my imagination into reality with this stunning ${type}! This app is seriously next-level - it's like magic but real! 🪄 Ready to create something extraordinary? Get Hisu AI and join the creative revolution! 🌟 #HisuAI #Future"
+      ];
+      
+      final randomMessage = messages[DateTime.now().millisecond % messages.length];
+      await Share.share('$randomMessage\n\n$url');
     } catch (e) {
       // Handle error
     }
