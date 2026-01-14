@@ -133,6 +133,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ],
           ),
           child: HistoryDrawer(
+            key: ValueKey(_isDrawerOpen), // Force rebuild when opened
             onNewChat: _startNewChat,
             onLoadHistory: _loadHistorySession,
           ),
@@ -566,30 +567,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       });
       _scrollToBottom();
       
-      // Save chat history
-      await HistoryService.saveSessionMessages(_currentSessionId, _messages);
+      // Save chat history only if there are messages
+      if (_messages.isNotEmpty) {
+        await HistoryService.saveSessionMessages(_currentSessionId, _messages);
+      }
     }
   }
 
 
 
   void _loadChatHistory() async {
-    try {
-      final history = await ApiService.loadChatHistory();
-      setState(() {
-        _messages.clear();
-        for (var msg in history) {
-          _messages.add(ChatMessage(
-            content: msg['content'] ?? '',
-            isUser: msg['role'] == 'user',
-            type: MessageType.text,
-          ));
-        }
-      });
-      _scrollToBottom();
-    } catch (e) {
-      // Handle error silently
-    }
+    // This method is not needed for new session-based history
+    // History is now managed by HistoryService and loaded on demand
   }
 
   @override
@@ -733,6 +722,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _isDrawerOpen = false;
     });
     _scrollToBottom();
+  }
+
+  void _refreshHistoryDrawer() {
+    // This will be called to refresh the drawer
+    setState(() {});
   }
 
   void _initSpeech() async {

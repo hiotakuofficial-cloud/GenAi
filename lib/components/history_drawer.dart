@@ -48,7 +48,7 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
             onPressed: () async {
               Navigator.pop(context);
               await HistoryService.deleteSession(sessionId);
-              _loadSessions();
+              _loadSessions(); // Refresh the list
             },
             child: const Text('Confirm'),
           ),
@@ -93,7 +93,13 @@ class _HistoryDrawerState extends State<HistoryDrawer> {
                       color: const Color(0xFF007AFF),
                       borderRadius: BorderRadius.circular(10),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      onPressed: widget.onNewChat,
+                      onPressed: () {
+                        widget.onNewChat();
+                        // Refresh sessions after creating new chat
+                        Future.delayed(const Duration(milliseconds: 100), () {
+                          _loadSessions();
+                        });
+                      },
                       child: const Text(
                         'New Chat',
                         style: TextStyle(
