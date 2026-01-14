@@ -238,7 +238,11 @@ class _DownloadScreenState extends State<DownloadScreen> {
       // Get download directory
       Directory? directory;
       if (Platform.isAndroid) {
-        directory = await getExternalStorageDirectory();
+        // Use DCIM/hisu/ folder for better user access
+        directory = Directory('/storage/emulated/0/DCIM/hisu');
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
       } else {
         directory = await getApplicationDocumentsDirectory();
       }
@@ -296,16 +300,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${widget.type.toUpperCase()} downloaded successfully!'),
-                  Text('Location: ${directory.path}/$fileName', 
+                  Text('Location: DCIM/hisu/$fileName', 
                        style: TextStyle(fontSize: 12, color: Colors.white70)),
                 ],
               ),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 4),
               action: SnackBarAction(
-                label: 'Open Folder',
+                label: 'Open Gallery',
                 textColor: Colors.white,
-                onPressed: () => _openDownloadFolder(directory.path),
+                onPressed: () => _openGallery(),
               ),
             ),
           );
@@ -321,19 +325,25 @@ class _DownloadScreenState extends State<DownloadScreen> {
     }
   }
 
-  void _openDownloadFolder(String path) async {
+  void _openGallery() async {
     try {
       if (Platform.isAndroid) {
-        // Open file manager to downloads folder
-        final uri = Uri.parse('content://com.android.externalstorage.documents/document/primary%3AAndroid%2Fdata');
+        // Open gallery app
+        final uri = Uri.parse('content://media/external/images/media');
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri);
+        } else {
+          // Fallback to file manager
+          final uri2 = Uri.parse('content://com.android.externalstorage.documents/document/primary%3ADCIM%2Fhisu');
+          if (await canLaunchUrl(uri2)) {
+            await launchUrl(uri2);
+          }
         }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Could not open folder'),
+          content: Text('Could not open gallery'),
           backgroundColor: Colors.orange,
         ),
       );

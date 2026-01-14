@@ -75,7 +75,7 @@ class NotificationHandler {
     await _notifications.show(
       id + 1000, // Use different ID for completion notification
       'Download Complete',
-      '${type.toUpperCase()} saved to Downloads folder',
+      '${type.toUpperCase()} saved to DCIM/hisu folder',
       details,
     );
   }
