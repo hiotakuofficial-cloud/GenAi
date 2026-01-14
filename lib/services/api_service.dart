@@ -31,7 +31,7 @@ class ApiService {
     return [];
   }
 
-  static Future<String> sendMessage(String message) async {
+  static Future<String> sendMessage(String message, {String? sessionId}) async {
     try {
       // Get last 20 messages for context
       final history = await _getChatHistory();
@@ -46,6 +46,8 @@ class ApiService {
         body: jsonEncode({
           'message': message,
           'history': last20,
+          'personality': '',
+          'language': '',
         }),
       );
 

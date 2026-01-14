@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import '../handlers/permissions_handler.dart';
+import '../handlers/notification_handler.dart';
+import 'dart:io';
 
 class DownloadScreen extends StatelessWidget {
   final String url;
@@ -102,7 +107,7 @@ class DownloadScreen extends StatelessWidget {
                     _buildActionButton(
                       icon: Icons.download,
                       label: 'Download',
-                      onTap: () => _downloadFile(),
+                      onTap: () => _downloadFile(context),
                     ),
                     _buildActionButton(
                       icon: Icons.share,
@@ -157,20 +162,108 @@ class DownloadScreen extends StatelessWidget {
     );
   }
 
-  void _downloadFile() async {
+  void _downloadFile(BuildContext context) async {
     try {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      // Request storage permission
+      bool hasStoragePermission = await PermissionsHandler.requestStoragePermission();
+      if (!hasStoragePermission) {
+        await PermissionsHandler.showPermissionDialog(
+          context, 
+          'Storage permission is required to download files.'
+        );
+        return;
+      }
+
+      // Request notification permission
+      bool hasNotificationPermission = await PermissionsHandler.requestNotificationPermission();
+      if (!hasNotificationPermission) {
+        await PermissionsHandler.showPermissionDialog(
+          context, 
+          'Notification permission is required to show download progress.'
+        );
+        return;
+      }
+
+      final notificationId = DateTime.now().millisecond;
+      
+      // Get download directory
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = await getExternalStorageDirectory();
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory != null) {
+        // Create filename
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final extension = type == 'image' ? 'jpg' : 'mp4';
+        final fileName = '${type}_$timestamp.$extension';
+        final filePath = '${directory.path}/$fileName';
+
+        // Start download with progress
+        final request = http.Request('GET', Uri.parse(url));
+        final response = await request.send();
+        
+        if (response.statusCode == 200) {
+          final contentLength = response.contentLength ?? 0;
+          final file = File(filePath);
+          final sink = file.openWrite();
+          
+          int downloaded = 0;
+          
+          await response.stream.listen((chunk) async {
+            sink.add(chunk);
+            downloaded += chunk.length;
+            
+            if (contentLength > 0) {
+              final progress = (downloaded / contentLength * 100).round();
+              final speed = (downloaded / 1024).round(); // KB
+              
+              await NotificationHandler.showProgressNotification(
+                id: notificationId,
+                title: 'Downloading ${type}...',
+                body: '$progress% • ${speed}KB downloaded',
+                progress: downloaded,
+                maxProgress: contentLength,
+              );
+            }
+          }).asFuture();
+          
+          await sink.close();
+          
+          // Show completion notification
+          await NotificationHandler.showCompletedNotification(
+            id: notificationId,
+            fileName: fileName,
+            type: type,
+          );
+          
+          // Show success snackbar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${type.toUpperCase()} downloaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
     } catch (e) {
-      // Handle error
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Download failed!'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   void _shareFile() async {
     try {
       final List<String> messages = [
-        "🎨 Just created this amazing ${type} with Hisu AI! ✨ This AI is absolutely incredible - it brings your wildest ideas to life in seconds! 🚀 Want to create something magical too? Try Hisu AI now! 💫 #HisuAI #AIArt #Creative",
-        "🔥 OMG! Look what Hisu AI just made for me! 😍 This ${type} is pure perfection! Hisu is like having a creative genius in your pocket - super fast, super smart, and totally addictive! 🎯 Download Hisu AI and unleash your creativity! ⚡ #HisuAI #Innovation",
-        "✨ Mind = BLOWN! 🤯 Hisu AI just turned my imagination into reality with this stunning ${type}! This app is seriously next-level - it's like magic but real! 🪄 Ready to create something extraordinary? Get Hisu AI and join the creative revolution! 🌟 #HisuAI #Future"
+        "Just created this incredible ${type} with Hisu AI! 🎨 This AI assistant is absolutely amazing - it transforms ideas into reality in seconds. Want to experience the magic of AI creativity? Try Hisu AI today! #HisuAI #AICreativity",
+        "Look what Hisu AI just made for me! 😍 This ${type} is exactly what I imagined. Hisu is like having a creative genius at your fingertips - fast, intelligent, and incredibly intuitive. Ready to unleash your creativity? Get Hisu AI now! #HisuAI #Innovation", 
+        "Mind blown by what Hisu AI can do! ✨ This stunning ${type} was created in just moments. The app is seriously next-level - it's like having superpowers for creativity. Ready to create something extraordinary? Download Hisu AI! #HisuAI #CreativeAI"
       ];
       
       final randomMessage = messages[DateTime.now().millisecond % messages.length];

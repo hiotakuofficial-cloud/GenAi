@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../components/download.dart';
+import '../components/typewriter_text.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -25,6 +25,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
   bool _isListening = false;
+  
+  String? _currentSessionId;
 
   @override
   Widget build(BuildContext context) {
@@ -91,13 +93,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ],
               ),
               child: message.type == MessageType.text
-                  ? Text(
-                      message.content,
-                      style: TextStyle(
-                        color: isUser ? Colors.black : Colors.white,
-                        fontSize: 16,
-                      ),
-                    )
+                  ? message.isUser 
+                      ? Text(
+                          message.content,
+                          style: TextStyle(
+                            color: isUser ? Colors.black : Colors.white,
+                            fontSize: 16,
+                          ),
+                        )
+                      : TypewriterText(
+                          text: message.content,
+                          style: TextStyle(
+                            color: isUser ? Colors.black : Colors.white,
+                            fontSize: 16,
+                          ),
+                          speed: const Duration(milliseconds: 30),
+                        )
                   : message.type == MessageType.image
                       ? GestureDetector(
                           onTap: () {
@@ -439,7 +450,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ));
         });
       } else {
-        response = await ApiService.sendMessage(message);
+        response = await ApiService.sendMessage(message, sessionId: _currentSessionId);
         setState(() {
           _messages.add(ChatMessage(
             content: response,

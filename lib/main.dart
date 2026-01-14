@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/splash.dart';
+import 'handlers/notification_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,6 +10,9 @@ void main() async {
     url: const String.fromEnvironment('SUPA_URL'),
     anonKey: const String.fromEnvironment('ANON_KEY'),
   );
+  
+  // Initialize notifications
+  await NotificationHandler.initialize();
   
   runApp(const MyApp());
 }
