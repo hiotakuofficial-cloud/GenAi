@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_player/video_player.dart';
 import '../handlers/permissions_handler.dart';
 import '../handlers/notification_handler.dart';
 import 'dart:io';
@@ -26,10 +27,35 @@ class DownloadScreen extends StatefulWidget {
 }
 
 class _DownloadScreenState extends State<DownloadScreen> {
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
+  bool _isPlaying = false;
+
   @override
   void initState() {
     super.initState();
     _checkPermissions();
+    if (widget.type == 'video') {
+      _initializeVideo();
+    }
+  }
+
+  void _initializeVideo() async {
+    try {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      await _videoController!.initialize();
+      setState(() {
+        _isVideoInitialized = true;
+      });
+    } catch (e) {
+      print('Video initialization failed: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
   }
 
   void _checkPermissions() async {
@@ -107,16 +133,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: widget.type == 'video'
-                        ? Container(
-                            width: double.infinity,
-                            height: 300,
-                            color: Colors.grey[900],
-                            child: const Icon(
-                              Icons.play_circle_fill,
-                              size: 80,
-                              color: Colors.white,
-                            ),
-                          )
+                        ? _buildVideoPlayer()
                         : Image.network(
                             widget.url,
                             fit: BoxFit.contain,
@@ -210,6 +227,109 @@ class _DownloadScreenState extends State<DownloadScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildVideoPlayer() {
+    if (!_isVideoInitialized || _videoController == null) {
+      return Container(
+        width: double.infinity,
+        height: 300,
+        color: Colors.grey[900],
+        child: const Center(
+          child: CupertinoActivityIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _togglePlayPause,
+      child: Container(
+        width: double.infinity,
+        height: 300,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Video player
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: VideoPlayer(_videoController!),
+            ),
+            // Play/Pause overlay
+            if (!_isPlaying)
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow,
+                  size: 40,
+                  color: Colors.white,
+                ),
+              ),
+            // Video controls
+            Positioned(
+              bottom: 10,
+              left: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      _formatDuration(_videoController!.value.position),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        value: _videoController!.value.position.inSeconds.toDouble(),
+                        max: _videoController!.value.duration.inSeconds.toDouble(),
+                        onChanged: (value) {
+                          _videoController!.seekTo(Duration(seconds: value.toInt()));
+                        },
+                        activeColor: Colors.white,
+                        inactiveColor: Colors.white.withOpacity(0.3),
+                      ),
+                    ),
+                    Text(
+                      _formatDuration(_videoController!.value.duration),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+
+  void _togglePlayPause() {
+    if (_videoController == null) return;
+    
+    setState(() {
+      if (_videoController!.value.isPlaying) {
+        _videoController!.pause();
+        _isPlaying = false;
+      } else {
+        _videoController!.play();
+        _isPlaying = true;
+      }
+    });
   }
 
   void _downloadFile(BuildContext context) async {

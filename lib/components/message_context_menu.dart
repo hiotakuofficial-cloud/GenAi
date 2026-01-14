@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 
 class MessageContextMenu extends StatelessWidget {
   final Widget child;
@@ -30,7 +32,7 @@ class MessageContextMenu extends StatelessWidget {
             HapticFeedback.lightImpact();
             if (onCopy != null) onCopy!();
           },
-          trailingIcon: CupertinoIcons.doc_on_clipboard,
+          trailingIcon: CupertinoIcons.doc_on_clipboard_fill,
           child: const Text('Copy'),
         ),
         CupertinoContextMenuAction(
@@ -39,8 +41,17 @@ class MessageContextMenu extends StatelessWidget {
             HapticFeedback.lightImpact();
             if (onSave != null) onSave!();
           },
-          trailingIcon: CupertinoIcons.book,
-          child: const Text('Save to Notes'),
+          trailingIcon: CupertinoIcons.bookmark_fill,
+          child: const Text('Save'),
+        ),
+        CupertinoContextMenuAction(
+          onPressed: () {
+            Navigator.pop(context);
+            HapticFeedback.lightImpact();
+            _shareMessage(context);
+          },
+          trailingIcon: CupertinoIcons.share,
+          child: const Text('Share'),
         ),
         if (isUser)
           CupertinoContextMenuAction(
@@ -50,7 +61,7 @@ class MessageContextMenu extends StatelessWidget {
               HapticFeedback.mediumImpact();
               _showRemoveConfirmation(context);
             },
-            trailingIcon: CupertinoIcons.delete,
+            trailingIcon: CupertinoIcons.delete_solid,
             child: const Text('Remove'),
           ),
       ],
@@ -58,27 +69,66 @@ class MessageContextMenu extends StatelessWidget {
     );
   }
 
+  void _shareMessage(BuildContext context) {
+    HapticFeedback.lightImpact();
+  }
+
   void _showRemoveConfirmation(BuildContext context) {
     showCupertinoDialog(
       context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Remove Message'),
-        content: const Text('Are you sure you want to remove this message?'),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
+      barrierDismissible: true,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          color: Colors.black.withOpacity(0.3),
+          child: CupertinoAlertDialog(
+            title: const Text(
+              'Remove Message',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'This message will be permanently removed from your chat history.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CupertinoColors.secondaryLabel,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: CupertinoColors.activeBlue,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              CupertinoDialogAction(
+                isDestructiveAction: true,
+                onPressed: () {
+                  Navigator.pop(context);
+                  HapticFeedback.heavyImpact();
+                  if (onRemove != null) onRemove!();
+                },
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              Navigator.pop(context);
-              HapticFeedback.heavyImpact();
-              if (onRemove != null) onRemove!();
-            },
-            child: const Text('Remove'),
-          ),
-        ],
+        ),
       ),
     );
   }

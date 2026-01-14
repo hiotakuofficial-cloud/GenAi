@@ -8,6 +8,8 @@ import '../components/typewriter_text.dart';
 import '../components/thinking_animation.dart';
 import '../components/message_context_menu.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import '../components/generation_animation.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -54,26 +56,28 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isLoading ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length && _isLoading) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Flexible(child: ThinkingAnimation()),
-                      ],
-                    ),
-                  );
-                }
-                return _buildMessageBubble(_messages[index]);
-              },
-            ),
+            child: _messages.isEmpty 
+                ? _buildEmptyState()
+                : ListView.builder(
+                    controller: _scrollController,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length + (_isLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length && _isLoading) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Flexible(child: ThinkingAnimation()),
+                            ],
+                          ),
+                        );
+                      }
+                      return _buildMessageBubble(_messages[index]);
+                    },
+                  ),
           ),
           _buildInputArea(),
         ],
@@ -124,126 +128,38 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             style: TextStyle(
                               color: isUser ? Colors.black : Colors.white,
                               fontSize: 16,
+                              height: 1.5,
                             ),
-                            speed: const Duration(milliseconds: 30),
+                            speed: const Duration(milliseconds: 300),
                           )
-                  : message.type == MessageType.image
-                      ? GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) => DownloadScreen(
-                                  url: message.content,
-                                  type: 'image',
-                                  prompt: message.prompt,
-                                ),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                  return Hero(
-                                    tag: 'image_${message.content}',
-                                    child: FadeTransition(
-                                      opacity: animation,
-                                      child: child,
-                                    ),
-                                  );
-                                },
+                  : GenerationAnimation(
+                      type: message.type == MessageType.image ? 'image' : 'video',
+                      url: message.content.isNotEmpty ? message.content : null,
+                      prompt: message.prompt,
+                      onTap: () {
+                        if (message.content.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder: (context, animation, secondaryAnimation) => DownloadScreen(
+                                url: message.content,
+                                type: message.type == MessageType.image ? 'image' : 'video',
+                                prompt: message.prompt,
                               ),
-                            );
-                          },
-                          child: Hero(
-                            tag: 'image_${message.content}',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    message.content,
-                                    width: 200,
-                                    height: 200,
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        width: 200,
-                                        height: 200,
-                                        color: CupertinoColors.systemGrey6,
-                                        child: const Center(
-                                          child: CupertinoActivityIndicator(),
-                                        ),
-                                      );
-                                    },
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                return Hero(
+                                  tag: '${message.type == MessageType.image ? 'image' : 'video'}_${message.content}',
+                                  child: FadeTransition(
+                                    opacity: animation,
+                                    child: child,
                                   ),
-                                ),
-                                if (message.prompt.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    message.prompt,
-                                    style: TextStyle(
-                                      color: isUser ? Colors.white70 : CupertinoColors.secondaryLabel,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ],
+                                );
+                              },
                             ),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) => DownloadScreen(
-                                  url: message.content,
-                                  type: 'video',
-                                  prompt: message.prompt,
-                                ),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                  return Hero(
-                                    tag: 'video_${message.content}',
-                                    child: SlideTransition(
-                                      position: Tween<Offset>(
-                                        begin: const Offset(0.0, 1.0),
-                                        end: Offset.zero,
-                                      ).animate(animation),
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            tag: 'video_${message.content}',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 200,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: CupertinoColors.systemGrey6,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_circle_fill,
-                                    size: 50,
-                                    color: CupertinoColors.systemBlue,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Video: ${message.prompt}',
-                                  style: TextStyle(
-                                    color: isUser ? Colors.white70 : CupertinoColors.secondaryLabel,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                          );
+                        }
+                      },
+                    ),
                 ),
             ),
           ),
@@ -269,7 +185,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: Row(
         children: [
           GestureDetector(
-            onTap: _showGenerationOptions,
+            onTap: _showMoreOptions,
             child: Container(
               width: 40,
               height: 40,
@@ -342,37 +258,165 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showGenerationOptions() {
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'What can I help you with?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 40),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.2,
+              children: [
+                _buildQuickAction(
+                  icon: CupertinoIcons.photo,
+                  title: 'Create Image',
+                  onTap: () => _setQuickPrompt('Create a image of: ', MessageType.image),
+                ),
+                _buildQuickAction(
+                  icon: CupertinoIcons.videocam,
+                  title: 'Create Video',
+                  onTap: () => _setQuickPrompt('Create a video of: ', MessageType.video),
+                ),
+                _buildQuickAction(
+                  icon: CupertinoIcons.lightbulb,
+                  title: 'Get Advice',
+                  onTap: () => _setQuickPrompt('Give me advice about: ', MessageType.text),
+                ),
+                _buildQuickAction(
+                  icon: CupertinoIcons.ellipsis,
+                  title: 'More...',
+                  onTap: _showMoreOptions,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickAction({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF111111),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: Colors.white,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _setQuickPrompt(String prompt, MessageType mode) {
+    setState(() {
+      _messageController.text = prompt;
+      _currentMode = mode;
+      _hasText = true;
+    });
+    // Focus on input field
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  void _showMoreOptions() {
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
-        title: const Text('Generate Content'),
+        title: const Text('More Options'),
         actions: [
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.pop(context);
-              _setGenerationMode(MessageType.image);
+              _setQuickPrompt('Summarize this text: ', MessageType.text);
             },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.image, color: CupertinoColors.systemBlue),
+                Icon(CupertinoIcons.doc_text, color: CupertinoColors.systemBlue),
                 SizedBox(width: 8),
-                Text('Gen Image'),
+                Text('Summarize'),
               ],
             ),
           ),
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.pop(context);
-              _setGenerationMode(MessageType.video);
+              _setQuickPrompt('Generate a story about: ', MessageType.text);
             },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.videocam, color: CupertinoColors.systemBlue),
+                Icon(CupertinoIcons.book, color: CupertinoColors.systemBlue),
                 SizedBox(width: 8),
-                Text('Gen Video'),
+                Text('Story Gen'),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _setQuickPrompt('Write professionally about: ', MessageType.text);
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.briefcase, color: CupertinoColors.systemBlue),
+                SizedBox(width: 8),
+                Text('Pro Write'),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _setQuickPrompt('Explain simply: ', MessageType.text);
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.info_circle, color: CupertinoColors.systemBlue),
+                SizedBox(width: 8),
+                Text('Explain'),
               ],
             ),
           ),
@@ -386,6 +430,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   void _startVoiceInput() async {
+    // Check permission when mic button is clicked
+    var permissionStatus = await Permission.microphone.status;
+    
+    if (permissionStatus.isDenied) {
+      // Request permission
+      var result = await Permission.microphone.request();
+      
+      if (result.isDenied) {
+        // Show iOS style dialog to go to settings
+        _showMicPermissionDialog();
+        return;
+      }
+    } else if (permissionStatus.isPermanentlyDenied) {
+      // Show settings dialog
+      _showMicPermissionDialog();
+      return;
+    }
+    
     if (!_speechEnabled) return;
     
     if (_isListening) {
@@ -402,6 +464,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         onResult: (result) {
           setState(() {
             _messageController.text = result.recognizedWords;
+            _hasText = result.recognizedWords.isNotEmpty;
           });
         },
         listenFor: const Duration(seconds: 30),
@@ -410,10 +473,28 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _setGenerationMode(MessageType mode) {
-    setState(() {
-      _currentMode = mode;
-    });
+  void _showMicPermissionDialog() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Enable Mic Permission'),
+        content: const Text('Microphone access is required for voice input. Please enable it in Settings.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            isDefaultAction: true,
+            child: const Text('Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getHintText() {
@@ -617,6 +698,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
 
   void _initSpeech() async {
+    // Don't request permission at startup, just initialize
     _speechEnabled = await _speechToText.initialize();
     setState(() {});
   }

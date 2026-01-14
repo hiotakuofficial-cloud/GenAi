@@ -4,6 +4,11 @@ import 'package:flutter/cupertino.dart';
 import 'dart:io';
 
 class PermissionsHandler {
+  static Future<bool> requestMicrophonePermission() async {
+    var status = await Permission.microphone.request();
+    return status.isGranted;
+  }
+
   static Future<bool> requestStoragePermission() async {
     var status = await Permission.storage.request();
     if (status.isDenied) {
