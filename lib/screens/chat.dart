@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../components/download.dart';
 import '../components/typewriter_text.dart';
+import '../components/thinking_animation.dart';
 import '../components/message_context_menu.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -59,8 +60,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
+              itemCount: _messages.length + (_isLoading ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == _messages.length && _isLoading) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Flexible(child: ThinkingAnimation()),
+                      ],
+                    ),
+                  );
+                }
                 return _buildMessageBubble(_messages[index]);
               },
             ),
@@ -558,6 +570,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             const Text('This message will be saved to your notes app.'),
             const SizedBox(height: 10),
             Container(
+              width: double.maxFinite,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.grey.withOpacity(0.1),
@@ -566,6 +579,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               child: Text(
                 content.length > 100 ? '${content.substring(0, 100)}...' : content,
                 style: const TextStyle(fontSize: 14),
+                softWrap: true,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

@@ -55,6 +55,8 @@ class _TypewriterTextState extends State<TypewriterText> {
     return Text(
       _displayedText,
       style: widget.style,
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
   }
 }
