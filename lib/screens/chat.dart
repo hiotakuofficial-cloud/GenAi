@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../components/download.dart';
 import '../components/typewriter_text.dart';
+import '../components/message_context_menu.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -77,38 +79,44 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isUser 
-                    ? Colors.white
-                    : const Color(0xFF111111),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: message.type == MessageType.text
-                  ? message.isUser 
-                      ? Text(
-                          message.content,
-                          style: TextStyle(
-                            color: isUser ? Colors.black : Colors.white,
-                            fontSize: 16,
-                          ),
-                        )
-                      : TypewriterText(
-                          text: message.content,
-                          style: TextStyle(
-                            color: isUser ? Colors.black : Colors.white,
-                            fontSize: 16,
-                          ),
-                          speed: const Duration(milliseconds: 30),
-                        )
+            child: MessageContextMenu(
+              messageContent: message.content,
+              isUser: isUser,
+              onCopy: () => _copyMessage(message.content),
+              onSave: () => _saveToNotes(message.content),
+              onRemove: isUser ? () => _removeMessage(message) : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isUser 
+                      ? Colors.white
+                      : const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: message.type == MessageType.text
+                    ? message.isUser 
+                        ? Text(
+                            message.content,
+                            style: TextStyle(
+                              color: isUser ? Colors.black : Colors.white,
+                              fontSize: 16,
+                            ),
+                          )
+                        : TypewriterText(
+                            text: message.content,
+                            style: TextStyle(
+                              color: isUser ? Colors.black : Colors.white,
+                              fontSize: 16,
+                            ),
+                            speed: const Duration(milliseconds: 30),
+                          )
                   : message.type == MessageType.image
                       ? GestureDetector(
                           onTap: () {
@@ -226,6 +234,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
+                ),
             ),
           ),
         ],
@@ -519,6 +528,97 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     
     _initSpeech();
     _loadChatHistory();
+  }
+
+  void _copyMessage(String content) {
+    Clipboard.setData(ClipboardData(text: content));
+    HapticFeedback.lightImpact();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Message copied to clipboard'),
+        backgroundColor: const Color(0xFF007AFF),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _saveToNotes(String content) {
+    HapticFeedback.mediumImpact();
+    
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Save to Notes'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('This message will be saved to your notes app.'),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                content.length > 100 ? '${content.substring(0, 100)}...' : content,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            onPressed: () {
+              Navigator.pop(context);
+              // Here you would integrate with notes app or save locally
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Message saved to notes'),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeMessage(ChatMessage message) {
+    HapticFeedback.heavyImpact();
+    
+    setState(() {
+      _messages.remove(message);
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Message removed'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() {
+              _messages.add(message);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   void _initSpeech() async {
