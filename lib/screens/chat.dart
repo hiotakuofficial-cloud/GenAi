@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/history_service.dart';
+import '../models/chat_message.dart';
 import '../components/download.dart';
 import '../components/typewriter_text.dart';
 import '../components/thinking_animation.dart';
@@ -29,12 +30,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<Offset> _drawerSlideAnimation;
   late Animation<Offset> _chatSlideAnimation;
   bool _hasText = false;
+  bool _isDrawerOpen = false;
+  String _currentSessionId = '';
   
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
   bool _isListening = false;
-  
-  String? _currentSessionId;
 
   @override
   Widget build(BuildContext context) {
@@ -776,18 +777,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 }
 
-class ChatMessage {
-  final String content;
-  final bool isUser;
-  final MessageType type;
-  final String prompt;
 
-  ChatMessage({
-    required this.content,
-    required this.isUser,
-    required this.type,
-    this.prompt = '',
-  });
-}
 
-enum MessageType { text, image, video }
+
