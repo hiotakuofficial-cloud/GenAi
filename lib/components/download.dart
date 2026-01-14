@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../handlers/permissions_handler.dart';
 import '../handlers/notification_handler.dart';
 import 'dart:io';
@@ -60,7 +61,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
           CupertinoDialogAction(
             onPressed: () {
               Navigator.pop(context);
-              PermissionsHandler.openSettings();
+              openAppSettings();
             },
             child: const Text('Settings'),
           ),

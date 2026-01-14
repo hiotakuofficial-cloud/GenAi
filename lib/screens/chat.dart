@@ -29,8 +29,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<Offset> _drawerSlideAnimation;
   late Animation<Offset> _chatSlideAnimation;
   bool _hasText = false;
-  bool _isDrawerOpen = false;
-  String _currentSessionId = '';
   
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
