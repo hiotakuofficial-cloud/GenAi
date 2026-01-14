@@ -32,7 +32,8 @@ class NotificationHandler {
       showProgress: true,
       maxProgress: maxProgress,
       progress: progress,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
     );
     
     final iosDetails = DarwinNotificationDetails();
@@ -50,13 +51,18 @@ class NotificationHandler {
     required String fileName,
     required String type,
   }) async {
+    // First cancel the progress notification
+    await _notifications.cancel(id);
+    
     const androidDetails = AndroidNotificationDetails(
       'download_channel',
       'Downloads',
       channelDescription: 'Download notifications',
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      showProgress: false,
     );
     
     const iosDetails = DarwinNotificationDetails();
@@ -67,9 +73,9 @@ class NotificationHandler {
     );
     
     await _notifications.show(
-      id,
-      'Downloaded: Hisu.$fileName',
-      '${type.toUpperCase()} saved successfully',
+      id + 1000, // Use different ID for completion notification
+      'Download Complete',
+      '${type.toUpperCase()} saved to Downloads folder',
       details,
     );
   }

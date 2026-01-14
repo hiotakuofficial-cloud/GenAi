@@ -8,7 +8,7 @@ import '../handlers/permissions_handler.dart';
 import '../handlers/notification_handler.dart';
 import 'dart:io';
 
-class DownloadScreen extends StatelessWidget {
+class DownloadScreen extends StatefulWidget {
   final String url;
   final String type; // 'image' or 'video'
   final String prompt;
@@ -19,6 +19,55 @@ class DownloadScreen extends StatelessWidget {
     required this.type,
     required this.prompt,
   });
+
+  @override
+  State<DownloadScreen> createState() => _DownloadScreenState();
+}
+
+class _DownloadScreenState extends State<DownloadScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+  }
+
+  void _checkPermissions() async {
+    // Check storage permission
+    bool hasStoragePermission = await PermissionsHandler.requestStoragePermission();
+    if (!hasStoragePermission) {
+      _showPermissionDialog('Storage permission is required to download files.');
+      return;
+    }
+
+    // Check notification permission
+    bool hasNotificationPermission = await PermissionsHandler.requestNotificationPermission();
+    if (!hasNotificationPermission) {
+      _showPermissionDialog('Notification permission is required to show download progress.');
+    }
+  }
+
+  void _showPermissionDialog(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Permission Required'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            onPressed: () {
+              Navigator.pop(context);
+              PermissionsHandler.openAppSettings();
+            },
+            child: const Text('Settings'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +81,7 @@ class DownloadScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          type == 'video' ? 'Video Preview' : 'Image Preview',
+          widget.type == 'video' ? 'Video Preview' : 'Image Preview',
           style: const TextStyle(color: Colors.white, fontSize: 18),
         ),
       ),
@@ -56,7 +105,7 @@ class DownloadScreen extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: type == 'video'
+                    child: widget.type == 'video'
                         ? Container(
                             width: double.infinity,
                             height: 300,
@@ -68,7 +117,7 @@ class DownloadScreen extends StatelessWidget {
                             ),
                           )
                         : Image.network(
-                            url,
+                            widget.url,
                             fit: BoxFit.contain,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
@@ -90,9 +139,9 @@ class DownloadScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                if (prompt.isNotEmpty) ...[
+                if (widget.prompt.isNotEmpty) ...[
                   Text(
-                    prompt,
+                    widget.prompt,
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 14,
@@ -197,12 +246,12 @@ class DownloadScreen extends StatelessWidget {
       if (directory != null) {
         // Create filename
         final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final extension = type == 'image' ? 'jpg' : 'mp4';
-        final fileName = '${type}_$timestamp.$extension';
+        final extension = widget.type == 'image' ? 'jpg' : 'mp4';
+        final fileName = '${widget.type}_$timestamp.$extension';
         final filePath = '${directory.path}/$fileName';
 
         // Start download with progress
-        final request = http.Request('GET', Uri.parse(url));
+        final request = http.Request('GET', Uri.parse(widget.url));
         final response = await request.send();
         
         if (response.statusCode == 200) {
@@ -222,7 +271,7 @@ class DownloadScreen extends StatelessWidget {
               
               await NotificationHandler.showProgressNotification(
                 id: notificationId,
-                title: 'Downloading ${type}...',
+                title: 'Downloading ${widget.type}...',
                 body: '$progress% • ${speed}KB downloaded',
                 progress: downloaded,
                 maxProgress: contentLength,
@@ -236,14 +285,28 @@ class DownloadScreen extends StatelessWidget {
           await NotificationHandler.showCompletedNotification(
             id: notificationId,
             fileName: fileName,
-            type: type,
+            type: widget.type,
           );
           
-          // Show success snackbar
+          // Show success snackbar with location
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${type.toUpperCase()} downloaded successfully!'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${widget.type.toUpperCase()} downloaded successfully!'),
+                  Text('Location: ${directory.path}/$fileName', 
+                       style: TextStyle(fontSize: 12, color: Colors.white70)),
+                ],
+              ),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Open Folder',
+                textColor: Colors.white,
+                onPressed: () => _openDownloadFolder(directory.path),
+              ),
             ),
           );
         }
@@ -258,16 +321,35 @@ class DownloadScreen extends StatelessWidget {
     }
   }
 
+  void _openDownloadFolder(String path) async {
+    try {
+      if (Platform.isAndroid) {
+        // Open file manager to downloads folder
+        final uri = Uri.parse('content://com.android.externalstorage.documents/document/primary%3AAndroid%2Fdata');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open folder'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
   void _shareFile() async {
     try {
       final List<String> messages = [
-        "Just created this incredible ${type} with Hisu AI! 🎨 This AI assistant is absolutely amazing - it transforms ideas into reality in seconds. Want to experience the magic of AI creativity? Try Hisu AI today! #HisuAI #AICreativity",
-        "Look what Hisu AI just made for me! 😍 This ${type} is exactly what I imagined. Hisu is like having a creative genius at your fingertips - fast, intelligent, and incredibly intuitive. Ready to unleash your creativity? Get Hisu AI now! #HisuAI #Innovation", 
-        "Mind blown by what Hisu AI can do! ✨ This stunning ${type} was created in just moments. The app is seriously next-level - it's like having superpowers for creativity. Ready to create something extraordinary? Download Hisu AI! #HisuAI #CreativeAI"
+        "Just created this incredible ${widget.type} with Hisu AI! 🎨 This AI assistant is absolutely amazing - it transforms ideas into reality in seconds. Want to experience the magic of AI creativity? Try Hisu AI today! #HisuAI #AICreativity",
+        "Look what Hisu AI just made for me! 😍 This ${widget.type} is exactly what I imagined. Hisu is like having a creative genius at your fingertips - fast, intelligent, and incredibly intuitive. Ready to unleash your creativity? Get Hisu AI now! #HisuAI #Innovation", 
+        "Mind blown by what Hisu AI can do! ✨ This stunning ${widget.type} was created in just moments. The app is seriously next-level - it's like having superpowers for creativity. Ready to create something extraordinary? Download Hisu AI! #HisuAI #CreativeAI"
       ];
       
       final randomMessage = messages[DateTime.now().millisecond % messages.length];
-      await Share.share('$randomMessage\n\n$url');
+      await Share.share('$randomMessage\n\n${widget.url}');
     } catch (e) {
       // Handle error
     }
