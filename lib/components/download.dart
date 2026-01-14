@@ -295,17 +295,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
           // Show success snackbar with location
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${widget.type.toUpperCase()} downloaded successfully!'),
-                  Text('Location: DCIM/hisu/$fileName', 
-                       style: TextStyle(fontSize: 12, color: Colors.white70)),
-                ],
-              ),
+              content: Text('${widget.type.toUpperCase()} downloaded successfully!'),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 4),
+              duration: const Duration(seconds: 3),
               action: SnackBarAction(
                 label: 'Open Gallery',
                 textColor: Colors.white,
