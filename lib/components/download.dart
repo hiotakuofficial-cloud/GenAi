@@ -60,7 +60,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
           CupertinoDialogAction(
             onPressed: () {
               Navigator.pop(context);
-              PermissionsHandler.openAppSettings();
+              PermissionsHandler.openSettings();
             },
             child: const Text('Settings'),
           ),
@@ -90,7 +90,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
           Expanded(
             child: Center(
               child: Hero(
-                tag: '${type}_$url',
+                tag: '${widget.type}_${widget.url}',
                 child: Container(
                   margin: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

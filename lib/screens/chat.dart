@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../services/history_service.dart';
 import '../components/download.dart';
 import '../components/typewriter_text.dart';
 import '../components/thinking_animation.dart';
 import '../components/message_context_menu.dart';
+import '../components/history_drawer.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -23,7 +25,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   MessageType _currentMode = MessageType.text;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  late AnimationController _drawerController;
+  late Animation<Offset> _drawerSlideAnimation;
+  late Animation<Offset> _chatSlideAnimation;
   bool _hasText = false;
+  bool _isDrawerOpen = false;
+  String _currentSessionId = '';
   
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
@@ -35,26 +42,51 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-      body: Column(
+      body: Stack(
         children: [
-          Container(
-            height: 100,
-            decoration: const BoxDecoration(
-              color: Color(0xFF000000),
-            ),
-            child: SafeArea(
-              child: Center(
-                child: Text(
-                  'Hisu AI',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontSize: 18,
+          // Main chat interface
+          SlideTransition(
+            position: _chatSlideAnimation,
+            child: Column(
+              children: [
+                Container(
+                  height: 100,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF000000),
+                  ),
+                  child: SafeArea(
+                    child: Row(
+                      children: [
+                        // Hamburger menu button
+                        GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            child: Icon(
+                              _isDrawerOpen ? CupertinoIcons.xmark : CupertinoIcons.line_horizontal_3,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        // Title
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'Hisu AI',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 56), // Balance the hamburger button
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -80,6 +112,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _buildInputArea(),
         ],
       ),
+    ),
+    
+    // History Drawer
+    SlideTransition(
+      position: _drawerSlideAnimation,
+      child: HistoryDrawer(
+        onNewChat: _startNewChat,
+        onLoadHistory: _loadHistorySession,
+      ),
+    ),
+    
+    // Overlay to close drawer
+    if (_isDrawerOpen)
+      GestureDetector(
+        onTap: _toggleDrawer,
+        child: Container(
+          color: Colors.black.withOpacity(0.3),
+        ),
+      ),
+  ],
+),
     );
   }
 
@@ -493,6 +546,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isLoading = false;
       });
       _scrollToBottom();
+      
+      // Save chat history
+      await HistoryService.saveSessionMessages(_currentSessionId, _messages);
     }
   }
 
@@ -532,6 +588,26 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     ));
     
+    // Drawer animation controller
+    _drawerController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _drawerSlideAnimation = Tween<Offset>(
+      begin: const Offset(-1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _drawerController,
+      curve: Curves.easeInOut,
+    ));
+    _chatSlideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.7, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _drawerController,
+      curve: Curves.easeInOut,
+    ));
+    
     _messageController.addListener(() {
       setState(() {
         _hasText = _messageController.text.trim().isNotEmpty;
@@ -540,6 +616,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     
     _initSpeech();
     _loadChatHistory();
+    _generateSessionId();
   }
 
   void _copyMessage(String content) {
@@ -637,6 +714,43 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _generateSessionId() {
+    _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  void _toggleDrawer() {
+    setState(() {
+      _isDrawerOpen = !_isDrawerOpen;
+    });
+    
+    if (_isDrawerOpen) {
+      _drawerController.forward();
+    } else {
+      _drawerController.reverse();
+    }
+  }
+
+  void _startNewChat() {
+    setState(() {
+      _messages.clear();
+      _isDrawerOpen = false;
+    });
+    _drawerController.reverse();
+    _generateSessionId();
+  }
+
+  void _loadHistorySession(String sessionId) async {
+    final messages = await HistoryService.getSessionMessages(sessionId);
+    setState(() {
+      _messages.clear();
+      _messages.addAll(messages);
+      _currentSessionId = sessionId;
+      _isDrawerOpen = false;
+    });
+    _drawerController.reverse();
+    _scrollToBottom();
+  }
+
   void _initSpeech() async {
     _speechEnabled = await _speechToText.initialize();
     setState(() {});
@@ -657,6 +771,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _fadeController.dispose();
+    _drawerController.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
