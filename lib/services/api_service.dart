@@ -55,6 +55,10 @@ class ApiService {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           String cleanResponse = data['response'] ?? 'No response';
+          
+          // Fix common template placeholders with generic replacements
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'\$\d+'), '[Tool Name]');
+          
           // Remove markdown formatting
           cleanResponse = cleanResponse.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1');
           cleanResponse = cleanResponse.replaceAll(RegExp(r'\*([^*]+)\*'), r'$1');
