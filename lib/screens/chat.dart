@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
-import '../services/history_service.dart';
 import '../models/chat_message.dart';
 import '../components/download.dart';
 import '../components/typewriter_text.dart';
 import '../components/thinking_animation.dart';
 import '../components/message_context_menu.dart';
-import '../components/history_drawer.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -26,8 +24,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   MessageType _currentMode = MessageType.text;
   late AnimationController _fadeController;
   bool _hasText = false;
-  bool _isDrawerOpen = false;
-  String _currentSessionId = '';
   
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
@@ -37,52 +33,26 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-      body: Stack(
+      body: Column(
         children: [
-          // Main chat interface
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            transform: Matrix4.translationValues(_isDrawerOpen ? 200 : 0, 0, 0),
-            child: Column(
-              children: [
-                Container(
-                  height: 100,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF000000),
-                  ),
-                  child: SafeArea(
-                    child: Row(
-                      children: [
-                        // Hamburger menu button
-                        GestureDetector(
-                          onTap: _toggleDrawer,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            child: Icon(
-                              _isDrawerOpen ? CupertinoIcons.xmark : CupertinoIcons.line_horizontal_3,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                        // Title
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              'Hisu AI',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 56), // Balance the hamburger button
-                      ],
-                    ),
+          Container(
+            height: 100,
+            decoration: const BoxDecoration(
+              color: Color(0xFF000000),
+            ),
+            child: SafeArea(
+              child: Center(
+                child: Text(
+                  'Hisu AI',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontSize: 18,
                   ),
                 ),
+              ),
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -108,51 +78,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _buildInputArea(),
         ],
       ),
-    ),
-    
-    // History Drawer - positioned properly
-    if (_isDrawerOpen)
-      Positioned(
-        left: 0,
-        top: 0,
-        bottom: 0,
-        child: Container(
-          width: 280,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF1a1a1a), Color(0xFF000000)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 10,
-                offset: const Offset(2, 0),
-              ),
-            ],
-          ),
-          child: HistoryDrawer(
-            key: ValueKey(_isDrawerOpen), // Force rebuild when opened
-            onNewChat: _startNewChat,
-            onLoadHistory: _loadHistorySession,
-          ),
-        ),
-      ),
-    
-    // Overlay to close drawer
-    if (_isDrawerOpen)
-      Positioned.fill(
-        left: 280,
-        child: GestureDetector(
-          onTap: _toggleDrawer,
-          child: Container(
-            color: Colors.black.withOpacity(0.3),
-          ),
-        ),
-      ),
-  ],
-),
     );
   }
 
@@ -544,7 +469,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ));
         });
       } else {
-        response = await ApiService.sendMessage(message, sessionId: _currentSessionId);
+        response = await ApiService.sendMessage(message);
         setState(() {
           _messages.add(ChatMessage(
             content: response,
@@ -566,11 +491,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _isLoading = false;
       });
       _scrollToBottom();
-      
-      // Save chat history only if there are messages
-      if (_messages.isNotEmpty) {
-        await HistoryService.saveSessionMessages(_currentSessionId, _messages);
-      }
     }
   }
 
@@ -597,7 +517,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     
     _initSpeech();
     _loadChatHistory();
-    _generateSessionId();
   }
 
   void _copyMessage(String content) {
@@ -695,39 +614,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _generateSessionId() {
-    _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
-  }
 
-  void _toggleDrawer() {
-    setState(() {
-      _isDrawerOpen = !_isDrawerOpen;
-    });
-  }
-
-  void _startNewChat() {
-    setState(() {
-      _messages.clear();
-      _isDrawerOpen = false;
-    });
-    _generateSessionId();
-  }
-
-  void _loadHistorySession(String sessionId) async {
-    final messages = await HistoryService.getSessionMessages(sessionId);
-    setState(() {
-      _messages.clear();
-      _messages.addAll(messages);
-      _currentSessionId = sessionId;
-      _isDrawerOpen = false;
-    });
-    _scrollToBottom();
-  }
-
-  void _refreshHistoryDrawer() {
-    // This will be called to refresh the drawer
-    setState(() {});
-  }
 
   void _initSpeech() async {
     _speechEnabled = await _speechToText.initialize();
