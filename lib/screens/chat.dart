@@ -25,9 +25,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   bool _isLoading = false;
   MessageType _currentMode = MessageType.text;
   late AnimationController _fadeController;
-  late AnimationController _drawerController;
-  late Animation<Offset> _drawerSlideAnimation;
-  late Animation<Offset> _chatSlideAnimation;
   bool _hasText = false;
   bool _isDrawerOpen = false;
   String _currentSessionId = '';
@@ -43,8 +40,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       body: Stack(
         children: [
           // Main chat interface
-          SlideTransition(
-            position: _chatSlideAnimation,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            transform: Matrix4.translationValues(_isDrawerOpen ? 200 : 0, 0, 0),
             child: Column(
               children: [
                 Container(
@@ -112,21 +110,44 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ),
     ),
     
-    // History Drawer
-    SlideTransition(
-      position: _drawerSlideAnimation,
-      child: HistoryDrawer(
-        onNewChat: _startNewChat,
-        onLoadHistory: _loadHistorySession,
+    // History Drawer - positioned properly
+    if (_isDrawerOpen)
+      Positioned(
+        left: 0,
+        top: 0,
+        bottom: 0,
+        child: Container(
+          width: 280,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1a1a1a), Color(0xFF000000)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 10,
+                offset: const Offset(2, 0),
+              ),
+            ],
+          ),
+          child: HistoryDrawer(
+            onNewChat: _startNewChat,
+            onLoadHistory: _loadHistorySession,
+          ),
+        ),
       ),
-    ),
     
     // Overlay to close drawer
     if (_isDrawerOpen)
-      GestureDetector(
-        onTap: _toggleDrawer,
-        child: Container(
-          color: Colors.black.withOpacity(0.3),
+      Positioned.fill(
+        left: 280,
+        child: GestureDetector(
+          onTap: _toggleDrawer,
+          child: Container(
+            color: Colors.black.withOpacity(0.3),
+          ),
         ),
       ),
   ],
@@ -579,26 +600,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     
-    // Drawer animation controller
-    _drawerController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _drawerSlideAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _drawerController,
-      curve: Curves.easeInOut,
-    ));
-    _chatSlideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0.7, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _drawerController,
-      curve: Curves.easeInOut,
-    ));
-    
     _messageController.addListener(() {
       setState(() {
         _hasText = _messageController.text.trim().isNotEmpty;
@@ -713,12 +714,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
     });
-    
-    if (_isDrawerOpen) {
-      _drawerController.forward();
-    } else {
-      _drawerController.reverse();
-    }
   }
 
   void _startNewChat() {
@@ -726,7 +721,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _messages.clear();
       _isDrawerOpen = false;
     });
-    _drawerController.reverse();
     _generateSessionId();
   }
 
@@ -738,7 +732,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _currentSessionId = sessionId;
       _isDrawerOpen = false;
     });
-    _drawerController.reverse();
     _scrollToBottom();
   }
 
@@ -762,7 +755,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _fadeController.dispose();
-    _drawerController.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
