@@ -25,7 +25,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   bool _isLoading = false;
   MessageType _currentMode = MessageType.text;
   late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
   late AnimationController _drawerController;
   late Animation<Offset> _drawerSlideAnimation;
   late Animation<Offset> _chatSlideAnimation;
@@ -579,13 +578,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
     
     // Drawer animation controller
     _drawerController = AnimationController(

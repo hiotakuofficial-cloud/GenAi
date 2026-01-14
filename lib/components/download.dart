@@ -237,7 +237,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       final notificationId = DateTime.now().millisecond;
       
       // Get download directory
-      Directory? directory;
+      Directory directory;
       if (Platform.isAndroid) {
         // Use DCIM/hisu/ folder for better user access
         directory = Directory('/storage/emulated/0/DCIM/hisu');
@@ -248,12 +248,11 @@ class _DownloadScreenState extends State<DownloadScreen> {
         directory = await getApplicationDocumentsDirectory();
       }
 
-      if (directory != null) {
-        // Create filename
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final extension = widget.type == 'image' ? 'jpg' : 'mp4';
-        final fileName = '${widget.type}_$timestamp.$extension';
-        final filePath = '${directory.path}/$fileName';
+      // Create filename
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final extension = widget.type == 'image' ? 'jpg' : 'mp4';
+      final fileName = '${widget.type}_$timestamp.$extension';
+      final filePath = '${directory.path}/$fileName';
 
         // Start download with progress
         final request = http.Request('GET', Uri.parse(widget.url));
@@ -307,7 +306,6 @@ class _DownloadScreenState extends State<DownloadScreen> {
             ),
           );
         }
-      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
